@@ -1,0 +1,42 @@
+from aiogram import Router, types
+from aiogram.filters import CommandStart
+from api_client import backend_api
+from keyboards import get_admin_main_menu, get_user_main_menu
+from config import ADMIN_IDS
+
+router = Router()
+
+@router.message(CommandStart())
+async def cmd_start(message: types.Message):
+    user_data = {
+        "id": str(message.from_user.id),
+        "username": message.from_user.username or "unknown"
+    }
+    
+    # Try to register user on backend
+    await backend_api.register_user(user_data)
+    
+    # Check if user is admin via backend API
+    admin_response = await backend_api.check_admin(message.from_user.id)
+    is_admin = admin_response.get("isAdmin", False) if isinstance(admin_response, dict) else False
+    print(is_admin)
+    if is_admin:
+        await message.answer(
+            f"Привіт, Адмін {message.from_user.first_name}! (Права адміністратора підтверджено) Оберіть дію:",
+            reply_markup=get_admin_main_menu()
+        )
+    else:
+        await message.answer(
+            f"Привіт, {message.from_user.first_name}! Оберіть дію:",
+            reply_markup=get_user_main_menu()
+        )
+
+@router.message(lambda message: message.text == "⬅️ Back")
+async def back_to_main(message: types.Message):
+    admin_response = await backend_api.check_admin(message.from_user.id)
+    is_admin = admin_response.get("isAdmin", False) if isinstance(admin_response, dict) else False
+    
+    if is_admin:
+        await message.answer("Головне меню:", reply_markup=get_admin_main_menu())
+    else:
+        await message.answer("Головне меню:", reply_markup=get_user_main_menu())
