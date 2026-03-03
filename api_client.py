@@ -60,27 +60,27 @@ class BackendAPI:
         return await self._request("GET", "/accounts", params={"adminId": adm_id})
 
     # POST /accounts/admin/give-key
-    async def give_key(self, target_id: str, number: str, admin_id: int):
+    async def give_key(self, target_id: str, phone: str, admin_id: int):
         adm_id_int = int(str(admin_id))
         adm_id_str = str(admin_id)
         payload = {
             "telegramId": str(target_id),
             "adminId": adm_id_str,
-            "number": str(number)
+            "phone": str(phone)
         }
         return await self._request("POST", "/accounts/admin/give-key", params={"adminId": adm_id_int}, json=payload)
 
     # POST /accounts/admin/info/{number}
-    async def get_account_info(self, number: str, admin_id: int):
+    async def get_account_info(self, phone: str, admin_id: int):
         adm_id_int = int(str(admin_id))
         adm_id_str = str(admin_id)
-        return await self._request("POST", f"/accounts/admin/info/{number}", params={"adminId": adm_id_int}, json={"adminId": adm_id_str})
+        return await self._request("POST", f"/accounts/admin/info/{phone}", params={"adminId": adm_id_int}, json={"adminId": adm_id_str})
 
     # POST /accounts/admin/refresh/{number}
-    async def refresh_account_key(self, number: str, admin_id: int):
+    async def refresh_account_key(self, phone: str, admin_id: int):
         adm_id_int = int(str(admin_id))
         adm_id_str = str(admin_id)
-        return await self._request("POST", f"/accounts/admin/refresh/{number}", params={"adminId": adm_id_int}, json={"adminId": adm_id_str})
+        return await self._request("POST", f"/accounts/admin/refresh/{phone}", params={"adminId": adm_id_int}, json={"adminId": adm_id_str})
 
     # GET /accounts/get-available-accounts
     async def get_available_accounts(self):
@@ -103,11 +103,13 @@ class BackendAPI:
         return await self._request("POST", "/users/admin/ban", params={"adminId": int(admin_id)}, json=payload)
 
     # GET /accounts/check-ban/:number
-    async def check_ban_by_number(self, number: str):
-        return await self._request("GET", f"/accounts/check-ban/{number}")
+    async def check_ban_by_number(self, phone: str):
+        return await self._request("GET", f"/accounts/check-ban/{phone}")
 
-    # GET /accounts/key-check-ban/:key
-    async def check_ban_by_key(self, key: str):
-        return await self._request("GET", f"/accounts/key-check-ban/{key}")
+    # POST /accounts/admin/take-away/:id
+    async def take_away_account(self, account_id: int, admin_id: int):
+        adm_id_int = int(str(admin_id))
+        adm_id_str = str(admin_id)
+        return await self._request("POST", f"/accounts/admin/take-away/{account_id}", params={"adminId": adm_id_int}, json={"adminId": adm_id_str})
 
 backend_api = BackendAPI()

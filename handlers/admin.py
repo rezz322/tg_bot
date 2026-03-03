@@ -38,13 +38,32 @@ async def process_user_info(message: types.Message, state: FSMContext):
     )
     
     tg_id = user_info.get('telegramId') or user_info.get('id')
-    keyboard = keyboards.get_unban_user_inline(str(tg_id)) if is_banned else keyboards.get_ban_user_inline(str(tg_id))
+    u_id = user_info.get('id')
+    
+    # Fetch user's accounts
+    all_accounts = await backend_api.list_accounts(message.from_user.id)
+    user_accounts = []
+    accounts_text = ""
+    if not isinstance(all_accounts, dict) or "error" not in all_accounts:
+        # Filter accounts that belong to this user
+        # telegramUserId in Account refers to TelegramUser.id (u_id)
+        user_accounts = [acc for acc in all_accounts if str(acc.get('telegramUserId')) == str(u_id)]
+        
+        if user_accounts:
+            accounts_text = "\n\n🔑 <b>Доступні акаунти:</b>\n"
+            for acc in user_accounts:
+                accounts_text += f"- №<code>{acc.get('phone')}</code>\n"
+        else:
+            accounts_text = "\n\n🔑 <b>Акаунти відсутні</b>"
+
+    response += accounts_text
+    keyboard = keyboards.get_user_info_keyboard(str(tg_id), is_banned, user_accounts)
     await message.answer(response, parse_mode="HTML", reply_markup=keyboard)
 
 @router.message(F.text == "📊 Info Account")
-async def ask_account_number(message: types.Message, state: FSMContext):
+async def ask_account_phone(message: types.Message, state: FSMContext):
     if not await check_is_admin(message.from_user.id): return
-    await message.answer("Введіть номер акаунта:")
+    await message.answer("Введіть номер телефону акаунта:")
     await state.set_state(AdminStates.waiting_for_account_number)
 
 @router.message(AdminStates.waiting_for_account_number)
@@ -57,7 +76,7 @@ async def process_account_info(message: types.Message, state: FSMContext):
         await message.answer("❌ Акаунт не знайдено.")
         return
     
-    acc_num = acc_info.get('number') or 'N/A'
+    acc_phone = acc_info.get('phone') or 'N/A'
     acc_key = acc_info.get('key') or 'N/A'
     tg_user_id = acc_info.get('telegramUserId') or acc_info.get('userId')
     
@@ -73,24 +92,24 @@ async def process_account_info(message: types.Message, state: FSMContext):
     user_display = f"@{username}" if username else (f"<code>{tg_user_id}</code>" if tg_user_id else "❌ Немає")
     
     response = (
-        f"📊 Акаунт №<code>{acc_num}</code>\n"
+        f"📊 Акаунт №<code>{acc_phone}</code>\n"
         f"🆕 Ключ: <code>{acc_key}</code>\n"
         f"👤 Користувач: {user_display}"
     )
-    await message.answer(response, parse_mode="HTML", reply_markup=keyboards.get_refresh_key_inline(str(acc_num)))
+    await message.answer(response, parse_mode="HTML", reply_markup=keyboards.get_refresh_key_inline(str(acc_phone)))
 
 @router.callback_query(F.data.startswith("refresh_"))
 async def cb_refresh_key(callback: types.CallbackQuery):
     if not await check_is_admin(callback.from_user.id):
         await callback.answer("🚫 У вас немає прав адміністратора.", show_alert=True)
         return
-    acc_num = callback.data.split("_")[1]
-    result = await backend_api.refresh_account_key(acc_num, admin_id=callback.from_user.id)
+    acc_phone = callback.data.split("_")[1]
+    result = await backend_api.refresh_account_key(acc_phone, admin_id=callback.from_user.id)
     
     if "error" in result:
         await callback.answer("❌ Помилка оновлення.")
     else:
-        await callback.message.answer(f"✅ Ключ для акаунта <code>{acc_num}</code> оновлено!\nНовий ключ: <code>{result.get('key')}</code>", parse_mode="HTML")
+        await callback.message.answer(f"✅ Ключ для акаунта <code>{acc_phone}</code> оновлено!\nНовий ключ: <code>{result.get('key')}</code>", parse_mode="HTML")
         await callback.answer()
 
 @router.callback_query(F.data.startswith("ban_"))
@@ -121,6 +140,26 @@ async def cb_unban_user(callback: types.CallbackQuery):
         await callback.message.answer(f"✅ Користувач <code>{user_id}</code> розблокований.", parse_mode="HTML")
         await callback.answer()
 
+@router.callback_query(F.data.startswith("takeaway_"))
+async def cb_takeaway_account(callback: types.CallbackQuery):
+    if not await check_is_admin(callback.from_user.id):
+        await callback.answer("🚫 У вас немає прав адміністратора.", show_alert=True)
+        return
+    
+    parts = callback.data.split("_")
+    acc_id = parts[1]
+    user_id = parts[2]
+    
+    result = await backend_api.take_away_account(acc_id, admin_id=callback.from_user.id)
+    
+    if "error" in result:
+        await callback.answer("❌ Помилка при видаленні доступу.")
+    else:
+        await callback.message.answer(f"✅ Доступ до акаунта видалено. Ключ оновлено.")
+        await callback.answer()
+        # Optionally refresh user info message
+        # But for now, just answer
+
 @router.message(F.text == "🔑 Give Key")
 async def ask_give_key_user(message: types.Message, state: FSMContext):
     if not await check_is_admin(message.from_user.id): return
@@ -131,7 +170,7 @@ async def ask_give_key_user(message: types.Message, state: FSMContext):
 async def process_give_key_user(message: types.Message, state: FSMContext):
     if not await check_is_admin(message.from_user.id): return
     await state.update_data(target_user_id=message.text)
-    await message.answer("Введіть номер акаунта:")
+    await message.answer("Введіть номер телефону акаунта:")
     await state.set_state(AdminStates.waiting_for_give_key_number)
 
 @router.message(AdminStates.waiting_for_give_key_number)
@@ -139,15 +178,15 @@ async def process_give_key_number(message: types.Message, state: FSMContext):
     if not await check_is_admin(message.from_user.id): return
     data = await state.get_data()
     target_user_id = data.get("target_user_id")
-    acc_number = message.text
+    acc_phone = message.text
     
-    result = await backend_api.give_key(target_user_id, acc_number, admin_id=message.from_user.id)
+    result = await backend_api.give_key(target_user_id, acc_phone, admin_id=message.from_user.id)
     await state.clear()
     
     if "error" in result:
         await message.answer(f"❌ Помилка: {result.get('message', 'Не вдалося видати ключ')}")
     else:
-        await message.answer(f"✅ Користувачу <code>{target_user_id}</code> надано доступ до акаунта <code>{acc_number}</code>.", parse_mode="HTML")
+        await message.answer(f"✅ Користувачу <code>{target_user_id}</code> надано доступ до акаунта <code>{acc_phone}</code>.", parse_mode="HTML")
 
 @router.message(F.text == "📚 All Accounts")
 async def list_all_accounts(message: types.Message):
@@ -183,11 +222,11 @@ async def list_all_accounts(message: types.Message):
         # Display: @username or ID or placeholder
         user_display = f"@{username}" if username else (f"<code>{tg_user_id}</code>" if tg_user_id else '❌ Немає')
         
-        acc_num = acc.get('number') or 'N/A'
+        acc_phone = acc.get('phone') or 'N/A'
         acc_key = acc.get('key') or 'N/A'
         
         text += (
-            f"\n🔹 №<code>{acc_num}</code>\n"
+            f"\n🔹 №<code>{acc_phone}</code>\n"
             f"   🆕 Ключ: <code>{acc_key}</code>\n"
             f"   👤 Користувач: {user_display}\n"
         )

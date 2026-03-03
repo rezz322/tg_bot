@@ -22,8 +22,8 @@ def get_apk_menu():
     ]
     return ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
 
-def get_refresh_key_inline(account_number: str):
-    button = InlineKeyboardButton(text="🔄 Refresh Key", callback_data=f"refresh_{account_number}")
+def get_refresh_key_inline(phone: str):
+    button = InlineKeyboardButton(text="🔄 Refresh Key", callback_data=f"refresh_{phone}")
     return InlineKeyboardMarkup(inline_keyboard=[[button]])
 
 def get_ban_user_inline(user_id):
@@ -32,4 +32,21 @@ def get_ban_user_inline(user_id):
 
 def get_unban_user_inline(user_id):
     buttons = [[InlineKeyboardButton(text="✅ Unban User", callback_data=f"unban_{user_id}")]]
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+def get_user_info_keyboard(user_id: str, is_banned: bool, accounts: list):
+    buttons = []
+    
+    # Ban/Unban button
+    if is_banned:
+        buttons.append([InlineKeyboardButton(text="✅ Unban User", callback_data=f"unban_{user_id}")])
+    else:
+        buttons.append([InlineKeyboardButton(text="🚫 Ban User", callback_data=f"ban_{user_id}")])
+    
+    # Account buttons
+    for acc in accounts:
+        acc_phone = acc.get('phone') or 'N/A'
+        acc_id = acc.get('id')
+        buttons.append([InlineKeyboardButton(text=f"❌ Видалити доступ: {acc_phone}", callback_data=f"takeaway_{acc_id}_{user_id}")])
+    
     return InlineKeyboardMarkup(inline_keyboard=buttons)
