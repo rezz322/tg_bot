@@ -13,7 +13,6 @@ router = Router()
 async def show_accounts(message: types.Message):
     accounts = await backend_api.get_available_accounts(telegram_id=message.from_user.id)
     if "error" in accounts:
-        await message.answer("❌ Помилка при отриманні списку акаунтів.")
         return
     
     if not accounts:
@@ -43,7 +42,7 @@ async def download_client_apk(message: types.Message):
             message_id=os.getenv("CLIENT_APK")
         )
     except Exception as e:
-        await message.answer(f"❌ Помилка завантаження Client APK: {e}")
+        pass
     else:
         instruction = os.getenv("CLIENT_INSTRUCTION", "Інструкція відсутня.")
         await message.answer(f"📋 **Інструкція (Клієнт):**\n{instruction}", parse_mode="Markdown")
@@ -59,7 +58,7 @@ async def download_admin_apk(message: types.Message):
             message_id=os.getenv("ADMIN_APK")
         )
     except Exception as e:
-        await message.answer(f"❌ Помилка завантаження Admin APK: {e}")
+        pass
     else:
         instruction = os.getenv("ADMIN_INSTRUCTION", "Інструкція відсутня.")
         await message.answer(f"📋 **Інструкція (Адмін):**\n{instruction}", parse_mode="Markdown")

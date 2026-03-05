@@ -25,7 +25,7 @@ async def process_user_info(message: types.Message, state: FSMContext):
     await state.clear()
     
     if "error" in user_info:
-        await message.answer(f"❌ Помилка: {user_info.get('message', 'Користувача не знайдено')}")
+        await message.answer("пользователь не найден")
         return
     
     username = html.escape(str(user_info.get('username', 'N/A')))
@@ -73,7 +73,7 @@ async def process_account_info(message: types.Message, state: FSMContext):
     await state.clear()
     
     if "error" in acc_info:
-        await message.answer("❌ Акаунт не знайдено.")
+        await message.answer("аккаунт не найден")
         return
     
     acc_phone = acc_info.get('phone') or 'N/A'
@@ -107,7 +107,7 @@ async def cb_refresh_key(callback: types.CallbackQuery):
     result = await backend_api.refresh_account_key(acc_phone, admin_id=callback.from_user.id)
     
     if "error" in result:
-        await callback.answer("❌ Помилка оновлення.")
+        await callback.answer()
     else:
         await callback.message.answer(f"✅ Ключ для акаунта <code>{acc_phone}</code> оновлено!\nНовий ключ: <code>{result.get('key')}</code>", parse_mode="HTML")
         await callback.answer()
@@ -121,7 +121,7 @@ async def cb_ban_user(callback: types.CallbackQuery):
     result = await backend_api.ban_user(user_id, admin_id=callback.from_user.id)
     
     if "error" in result:
-        await callback.answer("❌ Помилка при бані.")
+        await callback.answer()
     else:
         await callback.message.answer(f"🚫 Користувач <code>{user_id}</code> заблокований. Ключі оновлено.", parse_mode="HTML")
         await callback.answer()
@@ -135,7 +135,7 @@ async def cb_unban_user(callback: types.CallbackQuery):
     result = await backend_api.unban_user(user_id, admin_id=callback.from_user.id)
     
     if "error" in result:
-        await callback.answer("❌ Помилка при розбані.")
+        await callback.answer()
     else:
         await callback.message.answer(f"✅ Користувач <code>{user_id}</code> розблокований.", parse_mode="HTML")
         await callback.answer()
@@ -153,7 +153,7 @@ async def cb_takeaway_account(callback: types.CallbackQuery):
     result = await backend_api.take_away_account(acc_id, admin_id=callback.from_user.id)
     
     if "error" in result:
-        await callback.answer("❌ Помилка при видаленні доступу.")
+        await callback.answer()
     else:
         await callback.message.answer(f"✅ Доступ до акаунта видалено. Ключ оновлено.")
         await callback.answer()
@@ -184,7 +184,7 @@ async def process_give_key_number(message: types.Message, state: FSMContext):
     await state.clear()
     
     if "error" in result:
-        await message.answer(f"❌ Помилка: {result.get('message', 'Не вдалося видати ключ')}")
+        return
     else:
         await message.answer(f"✅ Користувачу <code>{target_user_id}</code> надано доступ до акаунта <code>{acc_phone}</code>.", parse_mode="HTML")
 
@@ -197,7 +197,6 @@ async def list_all_accounts(message: types.Message):
     users = await backend_api.list_users(message.from_user.id)
     
     if "error" in accounts or "error" in users:
-        await message.answer("❌ Помилка при отриманні даних з сервера.")
         return
     
     # Create mapping: ID -> Username
@@ -239,7 +238,6 @@ async def list_all_users(message: types.Message):
     users = await backend_api.list_users(message.from_user.id)
     
     if "error" in users:
-        await message.answer("❌ Помилка при отриманні списку користувачів.")
         return
     
     if not users:
