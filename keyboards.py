@@ -11,7 +11,7 @@ def get_admin_main_menu():
 def get_user_main_menu():
     buttons = [
         [KeyboardButton(text="📋 Available Accounts")],
-        [KeyboardButton(text="📥 Download Client APK"), KeyboardButton(text="📥 Download Admin APK")]
+        [KeyboardButton(text="📁 APKs"), KeyboardButton(text="❓ Как пользоваться")]
     ]
     return ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
 

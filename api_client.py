@@ -82,9 +82,9 @@ class BackendAPI:
         adm_id_str = str(admin_id)
         return await self._request("POST", f"/accounts/admin/refresh/{phone}", params={"adminId": adm_id_int}, json={"adminId": adm_id_str})
 
-    # GET /accounts/get-available-accounts
-    async def get_available_accounts(self):
-        return await self._request("GET", "/accounts/get-available-accounts")
+    # GET /accounts/user-keys/{telegramId}
+    async def get_available_accounts(self, telegram_id: int):
+        return await self._request("GET", f"/accounts/user-keys/{telegram_id}")
 
     # GET /bot/client-apk
     async def get_client_apk(self):
