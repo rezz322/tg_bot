@@ -1,11 +1,47 @@
 import aiohttp
+import hmac
+import hashlib
+import time
+import os
 from config import API_BASE_URL
 
 class BackendAPI:
     def __init__(self, base_url: str = API_BASE_URL):
         self.base_url = base_url
+        self.secret = os.getenv("SIGNING_SECRET")
+
+    def _get_signature(self, timestamp: str, method: str, path: str) -> str:
+        if not self.secret:
+            return ""
+        # Signature base: timestamp + method + path
+        base = f"{timestamp}{method}{path}"
+        return hmac.new(
+            self.secret.encode('utf-8'),
+            base.encode('utf-8'),
+            hashlib.sha256
+        ).hexdigest()
 
     async def _request(self, method: str, path: str, **kwargs):
+        timestamp = str(int(time.time()))
+        
+        # Build full path with query parameters for signature
+        full_path = path
+        params = kwargs.get("params")
+        if params:
+            from urllib.parse import urlencode
+            query_string = urlencode(params)
+            if query_string:
+                full_path += f"?{query_string}"
+        
+        signature = self._get_signature(timestamp, method, full_path)
+        
+        headers = kwargs.get("headers", {})
+        headers.update({
+            "x-timestamp": timestamp,
+            "x-signature": signature
+        })
+        kwargs["headers"] = headers
+
         async with aiohttp.ClientSession() as session:
             url = f"{self.base_url}{path}"
             async with session.request(method, url, **kwargs) as response:
